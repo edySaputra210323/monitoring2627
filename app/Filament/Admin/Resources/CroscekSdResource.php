@@ -14,6 +14,7 @@ use Filament\Forms\Form;
 use App\Models\CroscekSd;
 use Filament\Tables\Table;
 use App\Models\StatusCasis;
+use App\Enums\JenisKelaminEnum;
 use Filament\Resources\Resource;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Contracts\HasTable;
@@ -254,6 +255,20 @@ class CroscekSdResource extends Resource
                 })
                 ->html()
                 ->searchable(),
+               Tables\Columns\TextColumn::make('siswa.jenis_kelamin')
+                ->label('JK')
+                ->formatStateUsing(function ($state) {
+                    if ($state instanceof JenisKelaminEnum) {
+                        return match ($state) {
+                            JenisKelaminEnum::LakiLaki => 'L',
+                            JenisKelaminEnum::Perempuan => 'P',
+                        };
+                    }
+                    
+                    return '-';
+                })
+                ->sortable()
+                ->searchable(),
                 Tables\Columns\TextColumn::make('biodata')
                 ->label('BIODATA')
                 ->sortable()
@@ -301,41 +316,25 @@ class CroscekSdResource extends Resource
                     ->selectablePlaceholder(false),
             ])
             ->filters([
-    Tables\Filters\SelectFilter::make('tahun_akademik_id')
-        ->label('Tahun Akademik')
-        ->options(
-            \App\Models\TahunAkademik::orderBy('th_akademik', 'desc')
-                ->get()
-                ->mapWithKeys(fn ($tahun) => [
-                    $tahun->id => $tahun->status
-                        ? "{$tahun->th_akademik} (Aktif)"
-                        : $tahun->th_akademik,
-                ])
-        )
-        ->default(
-            \App\Models\TahunAkademik::where('status', true)->value('id') // default ke tahun aktif
-        )
-        ->placeholder('Pilih Tahun Akademik')
-        ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data) {
-            // Jika user memilih filter tahun, gunakan filter itu
-            if (!empty($data['value'])) {
-                return $query->whereHas('siswa', function ($subQuery) use ($data) {
-                    $subQuery->where('tahun_akademik_id', $data['value']);
-                });
-            }
+                Tables\Filters\SelectFilter::make('tahun_akademik_id')
+                    ->label('Tahun Ajaran')
+                    ->options(\App\Models\TahunAkademik::orderBy('th_akademik', 'DESC')->pluck('th_akademik', 'id'))
+                    ->default(function () {
+                        return \App\Models\TahunAkademik::where('status', true)->value('id');
+                    })
+                    ->attribute('siswa.tahun_akademik_id')
+                    ->query(function ($query, $data) {
+                        if ($data['value']) {
+                            // Simpan pilihan ke session agar Widget ikut menyesuaikan
+                            session(['filter_tahun_akademik' => $data['value']]);
+                            return $query->whereHas('siswa', function ($q) use ($data) {
+                                $q->where('tahun_akademik_id', $data['value']);
+                            });
+                        }
 
-            // Jika tidak memilih filter, gunakan tahun akademik aktif
-            $tahunAktif = \App\Models\TahunAkademik::where('status', true)->first();
-            if ($tahunAktif) {
-                return $query->whereHas('siswa', function ($subQuery) use ($tahunAktif) {
-                    $subQuery->where('tahun_akademik_id', $tahunAktif->id);
-                });
-            }
-
-            // Jika tidak ada tahun aktif, tampilkan kosong
-            return $query->whereRaw('1 = 0');
-        }),
-])
+                        return $query;
+                    }),
+            ])
             ->actions([
                 Tables\Actions\ViewAction::make()
                 ->iconButton()

@@ -8,17 +8,21 @@ use Filament\Widgets;
 use Filament\PanelProvider;
 use Filament\Actions\Action;
 use Filament\Support\Colors\Color;
+use App\Filament\Admin\Pages\Dashboard;
 use App\Filament\Admin\Pages\Auth\Login;
 use Orion\FilamentGreeter\GreeterPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use App\Filament\Admin\Widgets\CroscekSdGenderChart;
+use App\Filament\Admin\Widgets\JumlahPendaftarWidget;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 
 class AdminPanelProvider extends PanelProvider
@@ -97,7 +101,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                \App\Filament\Admin\Pages\Dashboard::class,
             ])
             
             ->discoverClusters(in: app_path('Filament/Admin/Clusters'), for: 'App\\Filament\\Admin\\Clusters')
@@ -132,13 +136,17 @@ class AdminPanelProvider extends PanelProvider
                 ->avatar(size: 'w-16 h-16', url: asset('images/user_default.png'))
                 ->timeSensitive(morningStart: 3, afternoonStart: 12, eveningStart: 15, nightStart: 18)
                 ->sort(-1)
-                ->columnSpan(span: '4')
+                ->columnSpan(span: '4'),
+                FilamentApexChartsPlugin::make(),
             ])
-            ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
+            ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), 
+            for: 'App\\Filament\\Admin\\Widgets',
+            )
             ->widgets([
                 
                 // Widgets\FilamentInfoWidget::class,
                 // Widgets\AccountWidget::class,
+                // CroscekSdGenderChart::class,
             ])
             ->middleware([
                 EncryptCookies::class,

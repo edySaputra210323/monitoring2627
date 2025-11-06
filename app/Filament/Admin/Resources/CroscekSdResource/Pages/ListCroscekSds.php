@@ -2,10 +2,11 @@
 
 namespace App\Filament\Admin\Resources\CroscekSdResource\Pages;
 
-use App\Filament\Admin\Resources\CroscekSdResource;
-use App\Filament\Admin\Resources\CroscekSdResource\Widgets\CroscekSiswaSdWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use App\Filament\Admin\Resources\CroscekSdResource;
+use App\Filament\Admin\Resources\CroscekSdResource\Widgets\GenderSdChart;
+use App\Filament\Admin\Resources\CroscekSdResource\Widgets\CroscekSiswaSdWidget;
 
 class ListCroscekSds extends ListRecords
 {
@@ -28,6 +29,7 @@ class ListCroscekSds extends ListRecords
     {
         return [
             CroscekSiswaSdWidget::class,
+            // GenderSdChart::class,
         ];
     }
 

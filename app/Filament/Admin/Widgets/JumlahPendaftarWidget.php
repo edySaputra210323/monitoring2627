@@ -25,9 +25,9 @@ class JumlahPendaftarWidget extends BaseWidget
 
         // Target pendaftaran berdasarkan unit sekolah
         $targets = [
-            'TKIT' => 40,
-            'SDIT' => 54,
-            'SMPIT' => 120,
+            'TKIT' => 45,
+            'SDIT' => 72,
+            'SMPIT' => 128,
             'SMAIT' => 60,
         ];
 

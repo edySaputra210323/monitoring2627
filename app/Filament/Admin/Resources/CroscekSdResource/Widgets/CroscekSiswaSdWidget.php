@@ -11,8 +11,12 @@ class CroscekSiswaSdWidget extends BaseWidget
 {
     protected function getStats(): array
     {
-        // Ambil tahun akademik yang aktif
-        $tahunAktif = TahunAkademik::where('status', true)->first();
+        // Ambil tahun akademik dari filter (jika ada), kalau tidak pakai tahun aktif
+        $tahunFilter = session('filter_tahun_akademik');
+
+        $tahunAktif = $tahunFilter
+            ? TahunAkademik::find($tahunFilter)
+            : TahunAkademik::where('status', true)->first();
 
         if (!$tahunAktif) {
             return [
@@ -23,7 +27,7 @@ class CroscekSiswaSdWidget extends BaseWidget
             ];
         }
 
-        // Filter Croscek hanya untuk siswa dengan tahun akademik aktif
+        // Filter Berdasarkan Tahun Akademik
         $query = CroscekSd::whereHas('siswa', function ($q) use ($tahunAktif) {
             $q->where('tahun_akademik_id', $tahunAktif->id);
         });

@@ -13,6 +13,8 @@ use Filament\Forms\Form;
 use App\Models\CroscekSmp;
 use Filament\Tables\Table;
 use App\Models\StatusCasis;
+use App\Models\TahunAkademik;
+use App\Enums\JenisKelaminEnum;
 use Filament\Resources\Resource;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Contracts\HasTable;
@@ -76,34 +78,44 @@ class CroscekSmpResource extends Resource
                             $set('siswa_id', null);
                         }),
                     Forms\Components\Select::make('siswa_id')
-                            ->label('Siswa')
-                            ->placeholder('Pilih Siswa')
-                            ->disabledOn('edit')
-                            ->options(function (callable $get, ?CroscekSmp $record) {
-                                $selectedSiswaIds = CroscekSmp::pluck('siswa_id')->toArray();
+                    ->label('Siswa')
+                    ->placeholder('Pilih Siswa')
+                    ->disabledOn('edit')
+                    ->options(function (callable $get, ?CroscekSmp $record) {
+                        // Ambil tahun ajaran aktif
+                        $tahunAktif = \App\Models\TahunAkademik::where('status', true)->first();
 
-                                // Tambahkan siswa yang sedang dipilih jika sedang dalam mode edit
-                                if ($record && $record->siswa_id) {
-                                    $selectedSiswaIds = array_diff($selectedSiswaIds, [$record->siswa_id]);
-                                }
+                        if (!$tahunAktif) {
+                            return []; // Kalau belum ada tahun aktif, tidak tampilkan data siswa
+                        }
 
-                                // Query untuk mendapatkan daftar siswa
-                                $query = Siswa::query()
-                                    ->where('unit_id', $get('unit_id'))
-                                    ->whereNotIn('id', $selectedSiswaIds);
+                        // Ambil siswa_id yang sudah dipakai di CroscekSmp
+                        $selectedSiswaIds = \App\Models\CroscekSmp::pluck('siswa_id')->toArray();
 
-                                // Tambahkan siswa yang sedang dipilih ke opsi, jika mode edit
-                                if ($record && $record->siswa_id) {
-                                    $query->orWhere('id', $record->siswa_id);
-                                }
+                        // Tambahkan siswa yang sedang dipilih jika mode edit
+                        if ($record && $record->siswa_id) {
+                            $selectedSiswaIds = array_diff($selectedSiswaIds, [$record->siswa_id]);
+                        }
 
-                                // Format nama siswa agar tampil: "NAMA - VA"
-                                return $query->get()->mapWithKeys(function ($siswa) {
-                                return [$siswa->id => "{$siswa->nm_siswa} - {$siswa->va}"];
-                                });
-                            })
-                            ->searchable()
-                            ->required(),
+                        // Query siswa dari unit terpilih DAN tahun ajaran aktif
+                        $query = \App\Models\Siswa::query()
+                            ->where('unit_id', $get('unit_id'))
+                            ->where('tahun_akademik_id', $tahunAktif->id)
+                            ->whereNotIn('id', $selectedSiswaIds);
+
+                        // Tambahkan siswa yang sedang dipilih ke opsi (saat edit)
+                        if ($record && $record->siswa_id) {
+                            $query->orWhere('id', $record->siswa_id);
+                        }
+
+                        // Format: "Nama Siswa - VA"
+                        return $query->get()->mapWithKeys(fn($siswa) => [
+                            $siswa->id => "{$siswa->nm_siswa} - {$siswa->va}",
+                        ]);
+                    })
+                    ->searchable()
+                    ->required()
+                    ->helperText('Hanya siswa dari tahun ajaran aktif yang ditampilkan.'),
 
 
                         Forms\Components\Select::make('biodata')
@@ -242,6 +254,20 @@ class CroscekSmpResource extends Resource
                 })
                 ->html()
                 ->searchable(),
+                 Tables\Columns\TextColumn::make('siswa.jenis_kelamin')
+                ->label('JK')
+                ->formatStateUsing(function ($state) {
+                    if ($state instanceof JenisKelaminEnum) {
+                        return match ($state) {
+                            JenisKelaminEnum::LakiLaki => 'L',
+                            JenisKelaminEnum::Perempuan => 'P',
+                        };
+                    }
+                    
+                    return '-';
+                })
+                ->sortable()
+                ->searchable(),
                 Tables\Columns\TextColumn::make('biodata')
                 ->label('BIODATA')
                 ->sortable()
@@ -289,7 +315,24 @@ class CroscekSmpResource extends Resource
                 ->selectablePlaceholder(false),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('tahun_akademik_id')
+                    ->label('Tahun Ajaran')
+                    ->options(\App\Models\TahunAkademik::orderBy('th_akademik', 'DESC')->pluck('th_akademik', 'id'))
+                    ->default(function () {
+                        return \App\Models\TahunAkademik::where('status', true)->value('id');
+                    })
+                    ->attribute('siswa.tahun_akademik_id')
+                    ->query(function ($query, $data) {
+                        if ($data['value']) {
+                            // Simpan pilihan ke session agar Widget ikut menyesuaikan
+                            session(['filter_tahun_akademik' => $data['value']]);
+                            return $query->whereHas('siswa', function ($q) use ($data) {
+                                $q->where('tahun_akademik_id', $data['value']);
+                            });
+                        }
+
+                        return $query;
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
