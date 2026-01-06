@@ -3,6 +3,8 @@
 namespace App\Filament\Admin\Resources\CroscekTkResource\Pages;
 
 use Filament\Actions;
+use App\Exports\SiswaAktifTkExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Filament\Resources\Pages\ListRecords;
 use App\Filament\Admin\Resources\CroscekTkResource;
 use App\Filament\Admin\Resources\CroscekTkResource\Widgets\CroscekSiswaTkWidget;
@@ -17,10 +19,27 @@ class ListCroscekTks extends ListRecords
             Actions\CreateAction::make(),
             Actions\Action::make('exportPdf')
                 ->label('Export PDF')
-                ->color('success')
+                ->color('danger')
                 ->icon('heroicon-o-document-arrow-down')
-                ->url(fn () => route('export.croscek', ['unit' => 'tk']))
-                ->openUrlInNewTab(), // Buka di tab baru agar tidak mengganggu tampilan admin
+                ->url(fn () =>
+                    route('export.croscek', ['unit' => 'tk']) 
+                    . '?' . http_build_query(request()->query())
+                )
+                ->openUrlInNewTab(),
+                 // 🔥 EXPORT EXCEL
+            Actions\Action::make('exportExcel')
+                ->label('Export Excel')
+                ->color('success')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->action(function () {
+                    // Ambil filter tahun ajaran dari table Filament
+                    $filterTahun = request()->input('tableFilters.tahun_akademik_id.value');
+
+                    return Excel::download(
+                        new SiswaAktifTkExport($filterTahun),
+                        'siswa-aktif-tk.xlsx'
+                    );
+                }),
         ];
     }
 

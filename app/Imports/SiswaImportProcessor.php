@@ -53,11 +53,8 @@ class SiswaImportProcessor implements ToCollection, WithHeadingRow
 
         foreach ($rows as $index => $row) {
             try {
-                if (Siswa::where('va', $row['va'])->exists()) {
-                    throw new \Exception("No. VA (contoh = {$row['va']}) sudah ada pada baris ke-" . ($index + 1));
-                }
-        
-
+                // Ambil data siswa lama (jika ada)
+                $existingSiswa = Siswa::where('va', $row['va'])->first();
 
                 // Validasi dan cari unit
                 $unit_id = null;
@@ -65,50 +62,66 @@ class SiswaImportProcessor implements ToCollection, WithHeadingRow
                     $unit_id = $this->searchInArray($unitMap, 'nm_unit', $row['nama_unit']);
                     if (!$unit_id) {
                         $errorMessages[] = "Unit '{$row['nama_unit']}' tidak ditemukan di DATA MASTER pada baris ke-" . ($index + 1);
-                        continue; // Lewati baris jika unit tidak valid
+                        continue;
                     }
                 } else {
                     $errorMessages[] = "Unit kosong atau tidak valid pada baris ke-" . ($index + 1);
-                    continue; // Lewati baris jika unit kosong
+                    continue;
                 }
 
-               // Validasi dan cari tahun akademik
-               $tahunAkademik_id = null;
-               if (!in_array($row['tahun_akademik'], [null, '', '-', '#N/A'])) {
-                   $tahunAkademik_id = $this->searchInArray($tahunAkademikMap, 'th_akademik', $row['tahun_akademik']);
-                   if (!$tahunAkademik_id) {
-                       $errorMessages[] = "Tahun akademik '{$row['tahun_akademik']}' tidak ditemukan atau tidak aktif pada baris ke-" . ($index + 1);
-                       continue;
-                   }
-               } else {
-                   $errorMessages[] = "Tahun akademik kosong pada baris ke-" . ($index + 1);
-                   continue;
-               }
-        
-                Siswa::updateOrCreate(
-                    ['va' => $row['va']],
-                    [
-                        'nm_siswa' => $row['nm_siswa'] ?? '-',
-                        'jenis_kelamin' => $this->convertJenisKelamin($row['jenis_kelamin']),
-                        'email' => $row['email'] ?? '-',
-                        'telp' => $row['telp'] ?? '-',
-                        'asal_sekolah' => $row['asal_sekolah'] ?? '-',
-                        'pindahan' => $row['pindahan'] ?? '-',
-                        'tempat_lahir' => $row['tempat_lahir'] ?? '-',
-                        'tgl_lahir' => $row['tgl_lahir'] ? $this->convertExcelDate($row['tgl_lahir']) : null,
-                        'kab_kota' => $row['kab_kota'] ?? '-',
-                        'yatim_piatu' => $row['yatim_piatu'] ?? 'TIDAK',
-                        'unit_id' => $unit_id,
-                        'tahun_akademik_id' => $tahunAkademik_id,
-                    ]
-                );
+                // Validasi dan cari tahun akademik
+                $tahunAkademik_id = null;
+                if (!in_array($row['tahun_akademik'], [null, '', '-', '#N/A'])) {
+                    $tahunAkademik_id = $this->searchInArray($tahunAkademikMap, 'th_akademik', $row['tahun_akademik']);
+                    if (!$tahunAkademik_id) {
+                        $errorMessages[] = "Tahun akademik '{$row['tahun_akademik']}' tidak ditemukan atau tidak aktif pada baris ke-" . ($index + 1);
+                        continue;
+                    }
+                } else {
+                    $errorMessages[] = "Tahun akademik kosong pada baris ke-" . ($index + 1);
+                    continue;
+                }
 
-                $successCount++; // Tambahkan jika berhasil diproses
+                // Data baru yang akan dimasukkan
+                $newData = [
+                    'nm_siswa' => $row['nm_siswa'] ?? '-',
+                    'jenis_kelamin' => $this->convertJenisKelamin($row['jenis_kelamin']),
+                    'email' => $row['email'] ?? '-',
+                    'telp' => $row['telp'] ?? '-',
+                    'asal_sekolah' => $row['asal_sekolah'] ?? '-',
+                    'pindahan' => $row['pindahan'] ?? '-',
+                    'tempat_lahir' => $row['tempat_lahir'] ?? '-',
+                    'tgl_lahir' => $row['tgl_lahir'] ? $this->convertExcelDate($row['tgl_lahir']) : null,
+                    'kab_kota' => $row['kab_kota'] ?? '-',
+                    'yatim_piatu' => $row['yatim_piatu'] ?? 'TIDAK',
+                    'unit_id' => $unit_id,
+                    'tahun_akademik_id' => $tahunAkademik_id,
+                ];
+
+                if ($existingSiswa) {
+                    // Bandingkan apakah ada perubahan
+                    $hasChanges = false;
+                    foreach ($newData as $key => $value) {
+                        if ($existingSiswa->$key != $value) {
+                            $hasChanges = true;
+                            break;
+                        }
+                    }
+
+                    if ($hasChanges) {
+                        $existingSiswa->update($newData);
+                    }
+                } else {
+                    // Jika belum ada → buat baru
+                    Siswa::create(array_merge(['va' => $row['va']], $newData));
+                }
+
+                $successCount++;
+
             } catch (\Exception $e) {
                 $errorMessages[] = "Kesalahan pada baris ke-" . ($index + 1) . ": " . $e->getMessage();
             }
-        }
-    
+        }    
         // Kirim notifikasi untuk kesalahan
         if (!empty($errorMessages)) {
             Notification::make()
@@ -169,7 +182,6 @@ class SiswaImportProcessor implements ToCollection, WithHeadingRow
                 // Lanjutkan ke format berikutnya
             }
         }
-
         throw new InvalidArgumentException("Format tanggal '$value' tidak valid. Format yang didukung adalah 'dd/mm/YYYY', 'YYYY-mm-dd', atau 'dd-mm-YYYY'.");
     }
 }

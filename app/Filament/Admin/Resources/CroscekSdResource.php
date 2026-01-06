@@ -227,34 +227,77 @@ class CroscekSdResource extends Resource
                     }
                 ),
                 Tables\Columns\TextColumn::make('siswa.nm_siswa')
-                ->label('NAMA SISWA')
-                ->description(function ($record) {
-                    $data = '';
+    ->label('NAMA SISWA')
+    ->description(function ($record) {
+        $badges = [];
 
-                    // Tambahkan nomor VA
-                    if (!empty($record->siswa?->va)) {
-                        $data .= '<small>No. VA: ' . $record->siswa?->va . '</small>';
-                    }
+        // Alumni
+        if ($record->siswa?->isAlumni()) {
+            $badges[] = '<span style="
+                display:inline-block;
+                padding:2px 6px;
+                font-size:10px;
+                border-radius:4px;
+                background:#dcfce7;
+                color:#166534;
+                margin-right:4px;
+            ">Alumni</span>';
+        }
 
-                    // Tambahkan tempat lahir
-                    if (!empty($record->siswa?->tempat_lahir)) {
-                        $data .= ($data ? '<br>' : '') . 
-                            '<small>Tempat Lahir: ' . $record->siswa?->tempat_lahir . '</small>';
-                    }
+        // Pindahan
+        if ($record->siswa?->isPindahan()) {
+            $asal = $record->siswa->asal_sekolah
+                ? ' – ' . e($record->siswa->asal_sekolah)
+                : '';
 
-                    // Tambahkan tanggal lahir dan umur
-                    if ($record->siswa?->tgl_lahir) {
-                        $tgl_lahir = Carbon::parse($record->siswa?->tgl_lahir);
-                        $umur = $tgl_lahir->age;
-                        $data .= ($data ? '<br>' : '') . 
-                            '<small>Tanggal Lahir: ' . $tgl_lahir->format('d-m-Y') . 
-                            ' (' . $umur . ' tahun)</small>';
-                    }
+            $badges[] = '<span style="
+                display:inline-block;
+                padding:2px 6px;
+                font-size:10px;
+                border-radius:4px;
+                background:#e0f2fe;
+                color:#075985;
+                margin-right:4px;
+            ">Pindahan' . $asal . '</span>';
+        }
 
-                    return new HtmlString($data);
-                })
-                ->html()
-                ->searchable(),
+        // Yatim
+        if ($record->siswa?->isYatim()) {
+            $badges[] = '<span style="
+                display:inline-block;
+                padding:2px 6px;
+                font-size:10px;
+                border-radius:4px;
+                background:#fef3c7;
+                color:#92400e;
+                margin-right:4px;
+            ">Yatim</span>';
+        }
+
+        // Info tambahan (VA, TTL)
+        $info = [];
+
+        if ($record->siswa?->va) {
+            $info[] = '<small>No. VA: ' . e($record->siswa->va) . '</small>';
+        }
+
+        if ($record->siswa?->tempat_lahir) {
+            $info[] = '<small>Tempat Lahir: ' . e($record->siswa->tempat_lahir) . '</small>';
+        }
+
+        if ($record->siswa?->tgl_lahir) {
+            $tgl = \Carbon\Carbon::parse($record->siswa->tgl_lahir);
+            $info[] = '<small>Tanggal Lahir: ' . $tgl->format('d-m-Y') .
+                ' (' . $tgl->age . ' tahun)</small>';
+        }
+
+        return new \Illuminate\Support\HtmlString(
+            ($badges ? implode(' ', $badges) . '<br>' : '')
+            . implode('<br>', $info)
+        );
+    })
+    ->html()
+    ->searchable(),
                Tables\Columns\TextColumn::make('siswa.jenis_kelamin')
                 ->label('JK')
                 ->formatStateUsing(function ($state) {

@@ -32,6 +32,25 @@ class Siswa extends Model
         'tgl_lahir' => 'date',
     ];
 
+    /* ==============================
+     | STATUS LOGIC (PENGGANTI HELPER)
+     ============================== */
+
+    public function isAlumni(): bool
+    {
+        return strtoupper($this->asal_sekolah ?? '') === 'AL-FITYAN';
+    }
+
+    public function isPindahan(): bool
+    {
+        return strtoupper($this->pindahan ?? '') === 'YA';
+    }
+
+    public function isYatim(): bool
+    {
+        return strtoupper($this->yatim_piatu ?? '') === 'YA';
+    }
+
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
