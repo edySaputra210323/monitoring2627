@@ -16,11 +16,13 @@ class ListCroscekTks extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Create')
+                ->icon('heroicon-s-plus-circle'),
             Actions\Action::make('exportPdf')
                 ->label('Export PDF')
                 ->color('danger')
-                ->icon('heroicon-o-document-arrow-down')
+                ->icon('heroicon-s-document-arrow-down')
                 ->url(fn () =>
                     route('export.croscek', ['unit' => 'tk']) 
                     . '?' . http_build_query(request()->query())
@@ -30,7 +32,7 @@ class ListCroscekTks extends ListRecords
             Actions\Action::make('exportExcel')
                 ->label('Export Excel')
                 ->color('success')
-                ->icon('heroicon-o-arrow-down-tray')
+                ->icon('heroicon-s-document-arrow-down')
                 ->action(function () {
                     // Ambil filter tahun ajaran dari table Filament
                     $filterTahun = request()->input('tableFilters.tahun_akademik_id.value');

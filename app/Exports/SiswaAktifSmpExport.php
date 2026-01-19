@@ -6,48 +6,52 @@ use App\Models\CroscekSmp;
 use App\Models\TahunAkademik;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class SiswaAktifSmpExport implements FromCollection, WithHeadings
+class SiswaAktifSmpExport implements
+    FromCollection,
+    WithHeadings,
+    ShouldAutoSize,
+    WithStyles
 {
     protected int $tahunAkademikId;
 
     public function __construct(?int $tahunAkademikId = null)
     {
-        // Kalau tidak ada filter, pakai tahun ajaran AKTIF
         $this->tahunAkademikId = $tahunAkademikId
             ?? TahunAkademik::where('status', true)->value('id');
     }
 
-public function collection()
-{
-    $data = CroscekSmp::query()
-        ->with(['siswa', 'statusCasis'])
+    public function collection()
+    {
+        $data = CroscekSmp::query()
+            ->with(['siswa', 'statusCasis'])
+            ->whereHas('siswa', fn ($q) =>
+                $q->where('tahun_akademik_id', $this->tahunAkademikId)
+            )
+            ->whereHas('statusCasis', fn ($q) =>
+                $q->whereNotIn('nm_status_casis', [
+                    'MENGUNDURKAN DIRI',
+                    'SUDAH TEST',
+                ])
+            )
+            ->orderBy('id')
+            ->get();
 
-        // FILTER TAHUN AJARAN
-        ->whereHas('siswa', function ($q) {
-            $q->where('tahun_akademik_id', $this->tahunAkademikId);
-        })
-
-        // ❌ KECUALIKAN MENGUNDURKAN DIRI & SUDAH TEST
-        ->whereHas('statusCasis', function ($q) {
-            $q->whereNotIn('nm_status_casis', [
-                'MENGUNDURKAN DIRI',
-                'SUDAH TEST',
-            ]);
-        })
-
-        ->orderBy('id')
-        ->get();
-
-    // 🔥 TAMBAHKAN NOMOR OTOMATIS
-    return $data->values()->map(function ($row, $index) {
-        return [
-            'No' => $index + 1, // nomor otomatis
-            'VA' => $row->siswa->va,
-            'Nama Siswa' => $row->siswa->nm_siswa,
-        ];
-    });
-}
+        return $data->values()->map(function ($row, $index) {
+            return [
+                'No' => $index + 1,
+                'VA' => $row->siswa->va,
+                'Nama Siswa' => $row->siswa->nm_siswa,
+                'Alumni' => strtoupper($row->siswa->asal_sekolah ?? '') === 'AL-FITYAN'
+                    ? 'YA'
+                    : 'TIDAK',
+                'Kab / Kota' => $row->siswa->kab_kota ?? '-',
+            ];
+        });
+    }
 
     public function headings(): array
     {
@@ -55,6 +59,33 @@ public function collection()
             'No',
             'VA',
             'Nama Siswa',
+            'Alumni',
+            'Kab / Kota',
+        ];
+    }
+
+    /**
+     * 🎨 STYLE EXCEL
+     */
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            // Header row (baris 1)
+            1 => [
+                'font' => [
+                    'bold' => true,
+                ],
+                'alignment' => [
+                    'horizontal' => 'center',
+                    'vertical' => 'center',
+                ],
+                'fill' => [
+                    'fillType' => 'solid',
+                    'startColor' => [
+                        'rgb' => 'E4E8FF', // biru lembut
+                    ],
+                ],
+            ],
         ];
     }
 }
