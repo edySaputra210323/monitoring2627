@@ -12,6 +12,11 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Resources\Pages\ListRecords;
 use App\Filament\Admin\Resources\SiswaResource;
 
+use App\Exports\SiswaExport;
+use App\Models\TahunAkademik;
+use App\Models\Unit;
+use Filament\Forms\Components\Select;
+
 
 
 class ListSiswas extends ListRecords
@@ -34,6 +39,40 @@ class ListSiswas extends ListRecords
                 ->action(fn() => $this->downloadTemplate()),
 
             Actions\CreateAction::make(),
+
+            Action::make('export-excel')
+    ->label('Export Excel')
+    ->icon('heroicon-o-arrow-down-tray')
+    ->color('success')
+    ->form([
+        Select::make('tahun_akademik_id')
+            ->label('Tahun Akademik')
+            ->options(
+                TahunAkademik::orderBy('th_akademik', 'desc')
+                    ->pluck('th_akademik', 'id')
+            )
+            ->default(
+                TahunAkademik::where('status', true)->value('id')
+            )
+            ->required(),
+
+        Select::make('unit_id')
+            ->label('Unit')
+            ->options(
+                Unit::pluck('nm_unit', 'id')
+            )
+            ->searchable()
+            ->required(),
+    ])
+    ->action(function (array $data) {
+        return Excel::download(
+            new SiswaExport(
+                $data['tahun_akademik_id'],
+                $data['unit_id']
+            ),
+            'siswa.xlsx'
+        );
+    }),
         ];
 
     }

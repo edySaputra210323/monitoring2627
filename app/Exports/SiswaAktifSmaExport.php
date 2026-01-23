@@ -4,10 +4,11 @@ namespace App\Exports;
 
 use App\Models\CroscekSma;
 use App\Models\TahunAkademik;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use App\Enums\JenisKelaminEnum;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class SiswaAktifSmaExport implements
@@ -45,17 +46,33 @@ class SiswaAktifSmaExport implements
                 'No' => $index + 1,
                 'VA' => $row->siswa->va,
                 'Nama Siswa' => $row->siswa->nm_siswa,
+                'Jenis Kelamin' => match ($row->siswa->jenis_kelamin) {
+                    JenisKelaminEnum::LakiLaki => 'Laki-laki',
+                    JenisKelaminEnum::Perempuan => 'Perempuan',
+                    default => '-',
+                },
                 'Alumni' => strtoupper($row->siswa->asal_sekolah ?? '') === 'AL-FITYAN'
                     ? 'YA'
                     : 'TIDAK',
                 'Kab / Kota' => $row->siswa->kab_kota ?? '-',
+                'Request Ortu' => $row->permintaan ?? '-',
+                'Note Petugas Monitoring' => $row->note,
             ];
         });
     }
 
     public function headings(): array
     {
-        return ['No', 'VA', 'Nama Siswa', 'Alumni', 'Kab / Kota'];
+        return [
+            'No',
+            'VA',
+            'Nama Siswa',
+            'Jenis Kelamin',
+            'Alumni',
+            'Kab / Kota',
+            'Request Ortu',
+            'Note Petugas Monitoring',
+        ];
     }
 
     public function styles(Worksheet $sheet)
